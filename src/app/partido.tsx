@@ -8,12 +8,13 @@ import { Spacing } from "@/constants/theme";
 
 export default function PartidoScreen(){
     const router = useRouter();
-    const{liga,titulo,dia,hora,estado}= useLocalSearchParams<{
+    const{liga,titulo,dia,hora,estado,donde}= useLocalSearchParams<{
         liga:string;
         titulo:string;
         dia:string;
         hora:string;
         estado:string;
+        donde:string;
     }>();
     return(
         <ThemedView style={styles.container}>
@@ -25,6 +26,7 @@ export default function PartidoScreen(){
                 <ThemedText type='title'>{titulo}</ThemedText>
                 <ThemedText>{dia} · {hora}</ThemedText>
                 {estado ? <ThemedText>{estado}</ThemedText>:null}
+                {donde ? <ThemedText>Donde Verlo:{donde}</ThemedText>:null}
             </SafeAreaView>
         </ThemedView>
     );

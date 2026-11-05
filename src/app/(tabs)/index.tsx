@@ -24,7 +24,21 @@ const BASE = 'https://site.api.espn.com/apis/site/v2/sports';
 const LIGAS = [
   { nombre: 'NBA', url: `${BASE}/basketball/nba/scoreboard` },
   { nombre: 'NFL', url: `${BASE}/football/nfl/scoreboard` },
+  { nombre: 'Premier', url: `${BASE}/soccer/eng.1/scoreboard` },
+  { nombre: 'LaLiga', url: `${BASE}/soccer/esp.1/scoreboard` },
+  { nombre: 'Champions', url: `${BASE}/soccer/uefa.champions/scoreboard` },
+  { nombre: 'Liga Betplay', url: `${BASE}/soccer/col.1/scoreboard` },
 ];
+
+const DONDE_VER: Record<string, string> = {
+  NBA: 'Disney+ Premium (ESPN)',
+  NFL: 'Disney+ Premium (ESPN)',
+  F1: 'Disney+ Premium (ESPN) · F1 TV',
+  Premier: 'Disney+ Premium (ESPN)',
+  LaLiga: 'Disney+ Premium (ESPN)',
+  Champions: 'Disney+ Premium (ESPN) · Paramount+',
+  'Liga Betplay': 'Win Sports · Win Play',
+};
 
 function textoEstado(estado: string) {
   if (estado === 'in') return 'En vivo';
@@ -32,37 +46,47 @@ function textoEstado(estado: string) {
   return '';
 }
 
-async function pedirLiga(liga: { nombre: string; url: string }): Promise<Partido[]> {
-  const respuesta = await fetch(liga.url);
-  const datos = await respuesta.json();
-
-  return datos.events.map((e: any) => {
-    const equipos = e.competitions[0].competitors;
-    const local = equipos.find((t: any) => t.homeAway === 'home');
-    const visitante = equipos.find((t: any) => t.homeAway === 'away');
-    return {
-      id: liga.nombre + e.id,
-      local: local.team.displayName,
-      visitante: visitante.team.displayName,
-      hora: new Date(e.date).toLocaleTimeString('es-CO', {
-        hour: 'numeric',
-        minute: '2-digit',
-      }),
-      dia: new Date(e.date).toLocaleDateString('es-CO', {
-        weekday: 'short',
-        day: 'numeric',
-        month: 'short',
-      }),
-      liga: liga.nombre,
-      estado: e.status.type.state,
-      inicio: e.date,
-      titulo: `${visitante.team.displayName} vs ${local.team.displayName}`,
-    };
-  });
-}
-
 function fechaYMD(d: Date) {
   return d.toISOString().slice(0, 10).replace(/-/g, '');
+}
+
+async function pedirLiga(liga: { nombre: string; url: string }): Promise<Partido[]> {
+  const dias = Array.from({ length: 7 }, (_, i) =>
+    fechaYMD(new Date(Date.now() + i * 24 * 60 * 60 * 1000))
+  );
+  const respuestas = await Promise.all(
+    dias.map((d) => fetch(`${liga.url}?dates=${d}`).then((r) => r.json()))
+  );
+  const eventos = respuestas.flatMap((d) => d.events ?? []);
+
+  return eventos.flatMap((e: any) => {
+    const equipos = e.competitions?.[0]?.competitors ?? [];
+    const local = equipos.find((t: any) => t.homeAway === 'home');
+    const visitante = equipos.find((t: any) => t.homeAway === 'away');
+
+    if (!local?.team || !visitante?.team) return [];
+
+    return [
+      {
+        id: liga.nombre + e.id,
+        local: local.team.displayName,
+        visitante: visitante.team.displayName,
+        hora: new Date(e.date).toLocaleTimeString('es-CO', {
+          hour: 'numeric',
+          minute: '2-digit',
+        }),
+        dia: new Date(e.date).toLocaleDateString('es-CO', {
+          weekday: 'short',
+          day: 'numeric',
+          month: 'short',
+        }),
+        liga: liga.nombre,
+        estado: e.status?.type?.state ?? 'pre',
+        inicio: e.date,
+        titulo: `${visitante.team.displayName} vs ${local.team.displayName}`,
+      },
+    ];
+  });
 }
 
 function nombreSesion(sigla?: string) {
@@ -83,8 +107,8 @@ async function pedirF1(): Promise<Partido[]> {
   const respuesta = await fetch(`${BASE}/racing/f1/scoreboard?dates=${rango}`);
   const datos = await respuesta.json();
 
-  return datos.events.flatMap((e: any) =>
-    e.competitions.map((c: any) => ({
+  return (datos.events ?? []).flatMap((e: any) =>
+    (e.competitions ?? []).map((c: any) => ({
       id: 'F1' + e.id + c.id,
       local: '',
       visitante: '',
@@ -115,8 +139,11 @@ export default function HomeScreen() {
   useEffect(() => {
     async function cargar() {
       try {
-        const resultados = await Promise.all([...LIGAS.map(pedirLiga), pedirF1()]);
-        const todos = resultados.flat();
+        const resultados = await Promise.allSettled([...LIGAS.map(pedirLiga), pedirF1()]);
+        resultados.forEach((r, i) => {
+          if (r.status === 'rejected') console.log('Falló la liga número', i, r.reason);
+        });
+        const todos = resultados.flatMap((r) => (r.status === 'fulfilled' ? r.value : []));
         todos.sort((a, b) => new Date(a.inicio).getTime() - new Date(b.inicio).getTime());
         setPartidos(todos);
       } catch {
@@ -166,6 +193,7 @@ export default function HomeScreen() {
                     dia: p.dia,
                     hora: p.hora,
                     estado: textoEstado(p.estado),
+                    donde: DONDE_VER[p.liga] ?? '',
                   },
                 })
               }>
@@ -211,6 +239,7 @@ const styles = StyleSheet.create({
   botones: {
     flexDirection: 'row',
     gap: Spacing.two,
+    flexWrap: 'wrap',
   },
   boton: {
     paddingHorizontal: Spacing.three,
