@@ -57,7 +57,10 @@ function textoEstado(estado: string) {
 }
 
 function fechaYMD(d: Date) {
-  return d.toISOString().slice(0, 10).replace(/-/g, '');
+  const anio = d.getFullYear();
+  const mes = String(d.getMonth() + 1).padStart(2, '0');
+  const dia = String(d.getDate()).padStart(2, '0');
+  return `${anio}${mes}${dia}`;
 }
 
 async function pedirLiga(liga: { nombre: string; url: string }): Promise<Partido[]> {
@@ -208,6 +211,7 @@ export default function HomeScreen() {
                     hora: p.hora,
                     estado: textoEstado(p.estado),
                     donde: (DONDE_VER[p.liga] ??[]).join('|'),
+                    inicio:p.inicio,
                   },
                 })
               }>
