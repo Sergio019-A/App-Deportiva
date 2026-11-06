@@ -1,5 +1,5 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Alert, Platform, Pressable, ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -38,8 +38,9 @@ Notifications.setNotificationHandler({
 export default function PartidoScreen() {
   const router = useRouter();
   const [abierto, setAbierto] = useState(false);
-  const[avisado,setAvisado]=useState(false);
-  const { liga, titulo, dia, hora, estado, donde,inicio} = useLocalSearchParams<{
+  const[avisoId,setAvisoId]=useState<string | null>(null);
+  const avisado = avisoId !== null;
+  const { liga, titulo, dia, hora, estado, donde,inicio,id} = useLocalSearchParams<{
     liga: string;
     titulo: string;
     dia: string;
@@ -47,12 +48,20 @@ export default function PartidoScreen() {
     estado: string;
     donde: string;
     inicio:string,
+    id:string,
   }>();
 
   const color = COLORES[liga] ?? '#6B7280';
   const fondo = FONDOS[liga] ?? '#000000';
   const plataformas = donde ? donde.split('|').slice(0, 3) : [];
-
+  useEffect(() => {
+    async function buscar(){
+        const lista = await Notifications.getAllScheduledNotificationsAsync();
+        const existente = lista.find((n) => n.content.data?.partidoId === id);
+        if(existente) setAvisoId(existente.identifier);
+    }
+    buscar();
+  },[id]);
   async function avisarme() {
     if(Platform.OS =='android'){
         try {
@@ -75,16 +84,21 @@ export default function PartidoScreen() {
         Alert.alert('Ya casi empieza','Este partido empieza en menos de 15 minutos o ya empezo.');
         return;
     }
-    await Notifications.scheduleNotificationAsync({
-        content:{
+    const nuevoId = await Notifications.scheduleNotificationAsync({
+        content: {
             title:'Empieza en 15 minutos',
             body:`${titulo}\nDónde verlo: ${plataformas[0] ?? ''}`,
+            data: {partidoId: id},
         },
-        trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: aviso },
-    });
-    setAvisado(true);
+        trigger:{type:Notifications.SchedulableTriggerInputTypes.DATE, date:aviso},
+    })
+    setAvisoId(nuevoId);
   }
-
+  async function cancelarAviso() {
+    if(!avisoId)return;
+    await Notifications.cancelScheduledNotificationAsync(avisoId);
+    setAvisoId(null);
+  }
   return (
     <ThemedView style={[styles.container, {backgroundColor: fondo}]}>
       <SafeAreaView style={styles.safeArea}>
@@ -142,11 +156,10 @@ export default function PartidoScreen() {
           </ThemedView>
           {estado === '' &&(
             <Pressable
-            onPress={avisarme}
-            disabled={avisado}
+            onPress={avisado ? cancelarAviso : avisarme}
             style={[styles.botonAviso,{backgroundColor:color,opacity:avisado ? 0.6 : 1}]}>
                 <ThemedText style={styles.textoBotonAviso}>
-                    {avisado ? '✓ Aviso programado' : '🔔 Avisarme 15 min antes'}
+                    {avisado ? '✓ Aviso programado · toca para cancelar' : '🔔 Avisarme 15 min antes'}
                 </ThemedText>
             </Pressable>
           )}

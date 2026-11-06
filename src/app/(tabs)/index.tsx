@@ -1,6 +1,6 @@
 import { useRouter } from 'expo-router';
-import { Fragment, useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet } from 'react-native';
+import { Fragment, useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
@@ -76,8 +76,8 @@ function fechaYMD(d: Date) {
   return `${anio}${mes}${dia}`;
 }
 
-async function pedirLiga(liga: { nombre: string; url: string }): Promise<Partido[]> {
-  const dias = Array.from({ length: 7 }, (_, i) =>
+async function pedirLiga(liga: { nombre: string; url: string }, numDias =7): Promise<Partido[]> {
+  const dias = Array.from({ length: numDias}, (_, i) =>
     fechaYMD(new Date(Date.now() + i * 24 * 60 * 60 * 1000))
   );
   const respuestas = await Promise.all(
@@ -166,24 +166,40 @@ export default function HomeScreen() {
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState(false);
   const router = useRouter();
+  const [refrescando,setRefrescando]=useState(false);
 
-  useEffect(() => {
-    async function cargar() {
-      try {
-        const resultados = await Promise.allSettled([...LIGAS.map(pedirLiga), pedirF1()]);
-        resultados.forEach((r, i) => {
-          if (r.status === 'rejected') console.log('Falló la liga número', i, r.reason);
-        });
-        const todos = resultados.flatMap((r) => (r.status === 'fulfilled' ? r.value : []));
+  const hayVivos = useRef(false);
+  async function cargar(soloHoy = false) {
+    try {
+      const resultados = await Promise.allSettled([
+        ...LIGAS.map((l) => pedirLiga(l, soloHoy ? 1 : 7)),
+        pedirF1(),
+      ]);
+      const nuevos = resultados.flatMap((r) => (r.status === 'fulfilled' ? r.value : []));
+
+      setPartidos((anteriores) => {
+        // Mezcla: los partidos nuevos reemplazan a los viejos con el mismo id
+        const mapa = new Map(anteriores.map((p) => [p.id, p]));
+        nuevos.forEach((p) => mapa.set(p.id, p));
+        const todos = [...mapa.values()];
         todos.sort((a, b) => new Date(a.inicio).getTime() - new Date(b.inicio).getTime());
-        setPartidos(todos);
-      } catch {
-        setError(true);
-      } finally {
-        setCargando(false);
-      }
+        hayVivos.current = todos.some((p) => p.estado === 'in');
+        return todos;
+      });
+      setError(false);
+    } catch {
+      setError(true);
+    } finally {
+      setCargando(false);
+      setRefrescando(false);
     }
-    cargar();
+  }
+  useEffect(() => {
+  cargar();
+  const intervalo = setInterval(() => {
+    if(hayVivos.current)cargar(true);
+  }, 60*1000);
+  return() => clearInterval(intervalo);
   }, []);
 
   const visibles =
@@ -215,7 +231,18 @@ export default function HomeScreen() {
           <ThemedText>No hay partidos por ahora.</ThemedText>
         )}
 
-        <ScrollView contentContainerStyle={styles.lista}>
+        <ScrollView 
+        contentContainerStyle={styles.lista}
+        refreshControl={
+          <RefreshControl 
+          refreshing = {refrescando}
+          onRefresh={() =>{
+            setRefrescando(true);
+            cargar(true);
+          }}
+          tintColor= '#FFFFFF'
+          />
+        }>
           {visibles.map((p, i) => (
           <Fragment key={p.id}>
               {(i === 0 || visibles[i - 1].dia !== p.dia) && (
@@ -234,6 +261,7 @@ export default function HomeScreen() {
                     estado: textoEstado(p.estado),
                     donde: (DONDE_VER[p.liga] ??[]).join('|'),
                     inicio:p.inicio,
+                    id:p.id,
                   },
                 })
               }>
