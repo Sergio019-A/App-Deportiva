@@ -30,15 +30,25 @@ const LIGAS = [
   { nombre: 'Liga Betplay', url: `${BASE}/soccer/col.1/scoreboard` },
 ];
 
-const DONDE_VER: Record<string, string> = {
-  NBA: 'Disney+ Premium (ESPN)',
-  NFL: 'Disney+ Premium (ESPN)',
-  F1: 'Disney+ Premium (ESPN) · F1 TV',
-  Premier: 'Disney+ Premium (ESPN)',
-  LaLiga: 'Disney+ Premium (ESPN)',
-  Champions: 'Disney+ Premium (ESPN) · Paramount+',
-  'Liga Betplay': 'Win Sports · Win Play',
+const DONDE_VER: Record<string, string[]> = {
+  NBA: ['Disney+ Premium (ESPN)','ESPN en TV por cable','NBA League Pass'],
+  NFL: ['Disney+ Premium (ESPN)','ESPN en TV por cable','ESPN Deportes'],
+  F1: ['Disney+ Premium (ESPN)' ,'F1 TV','ESPN en TV por cable'],
+  Premier: ['Disney+ Premium (ESPN)','ESPN en TV por cable','DSports'],
+  LaLiga: ['Disney+ Premium (ESPN)','ESPN en TV por cable','DSports'],
+  Champions: ['Disney+ Premium (ESPN)',' Paramount+','ESPN en TV por cable'],
+  'Liga Betplay': ['Win Sports',' Win Play','DSports'],
 };
+const COLORES: Record<string,string>={
+  Todas: '#6B7280',
+  NBA: '#E56020',
+  NFL: '#013369',
+  F1: '#E10600',
+  Premier: '#2F855A',
+  LaLiga: '#2F855A',
+  Champions: '#2F855A',
+  'Liga Betplay': '#2F855A',
+}
 
 function textoEstado(estado: string) {
   if (estado === 'in') return 'En vivo';
@@ -168,8 +178,12 @@ export default function HomeScreen() {
             <Pressable
               key={nombre}
               onPress={() => setSeleccion(nombre)}
-              style={[styles.boton, seleccion === nombre && styles.botonActivo]}>
-              <ThemedText>{nombre}</ThemedText>
+              style={[
+                styles.boton,
+                seleccion == nombre ? styles.botonActivo : styles.botonInactivo,
+                {backgroundColor:COLORES[nombre] ?? '#6B7280'},             
+              ]}>
+              <ThemedText style={styles.textoBoton}>{nombre}</ThemedText>
             </Pressable>
           ))}
         </ThemedView>
@@ -193,7 +207,7 @@ export default function HomeScreen() {
                     dia: p.dia,
                     hora: p.hora,
                     estado: textoEstado(p.estado),
-                    donde: DONDE_VER[p.liga] ?? '',
+                    donde: (DONDE_VER[p.liga] ??[]).join('|'),
                   },
                 })
               }>
@@ -250,7 +264,14 @@ const styles = StyleSheet.create({
     backgroundColor: '#9CA3AF',
   },
   botonActivo: {
-    backgroundColor: '#6B7280',
+    borderWidth:2,
+  },
+  botonInactivo:{
+    opacity:1,
+  },
+  textoBoton:{
+    color:'#FFFFFF',
+    fontWeight:'600',
   },
   textoCard: {
     color: '#111827',
