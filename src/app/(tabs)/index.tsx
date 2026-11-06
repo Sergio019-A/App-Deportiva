@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -17,6 +17,7 @@ type Partido = {
   estado: string;
   inicio: string;
   titulo: string;
+  marcador: string,
 };
 
 const BASE = 'https://site.api.espn.com/apis/site/v2/sports';
@@ -55,7 +56,19 @@ function textoEstado(estado: string) {
   if (estado === 'post') return 'Finalizado';
   return '';
 }
-
+function etiquetaDia(inicio:string){
+  const fecha= new Date(inicio);
+  const hoy =new Date();
+  const manana= new Date(Date.now() + 24 * 60 * 60 * 1000);
+  if(fecha.toDateString()=== hoy.toDateString()) return 'Hoy';
+  if(fecha.toDateString() === manana.toDateString())return 'Mañana';
+  const texto = fecha.toLocaleDateString('es-CO',{
+    weekday:'long',
+    day:'numeric',
+    month:'long',
+  });
+  return texto.charAt(0).toUpperCase() + texto.slice(1);
+}
 function fechaYMD(d: Date) {
   const anio = d.getFullYear();
   const mes = String(d.getMonth() + 1).padStart(2, '0');
@@ -97,6 +110,10 @@ async function pedirLiga(liga: { nombre: string; url: string }): Promise<Partido
         estado: e.status?.type?.state ?? 'pre',
         inicio: e.date,
         titulo: `${visitante.team.displayName} vs ${local.team.displayName}`,
+        marcador: 
+          (e.status?.type?.state ?? 'pre') === 'pre'
+          ? ''
+          :`${visitante.score ?? 0} - ${local.score ?? 0}`,
       },
     ];
   });
@@ -138,6 +155,7 @@ async function pedirF1(): Promise<Partido[]> {
       liga: 'F1',
       estado: c.status?.type?.state ?? 'pre',
       inicio: c.date,
+      marcador : '',
     }))
   );
 }
@@ -198,7 +216,11 @@ export default function HomeScreen() {
         )}
 
         <ScrollView contentContainerStyle={styles.lista}>
-          {visibles.map((p) => (
+          {visibles.map((p, i) => (
+          <Fragment key={p.id}>
+              {(i === 0 || visibles[i - 1].dia !== p.dia) && (
+                <ThemedText style={styles.tituloDia}>{etiquetaDia(p.inicio)}</ThemedText>
+              )}
             <Pressable
               key={p.id}
               onPress={() =>
@@ -220,6 +242,9 @@ export default function HomeScreen() {
                   {p.liga}
                 </ThemedText>
                 <ThemedText style={styles.textoCard}>{p.titulo}</ThemedText>
+                {p.marcador ?(
+                  <ThemedText style={[styles.textoCard, styles.marcador]}>{p.marcador}</ThemedText>
+                ): null}
                 <ThemedText type="small" style={styles.textoCard}>
                   {p.dia} · {p.hora}
                 </ThemedText>
@@ -228,6 +253,7 @@ export default function HomeScreen() {
                 </ThemedText>
               </ThemedView>
             </Pressable>
+             </Fragment>
           ))}
         </ScrollView>
       </SafeAreaView>
@@ -279,5 +305,14 @@ const styles = StyleSheet.create({
   },
   textoCard: {
     color: '#111827',
+  },
+  tituloDia:{
+    fontSize: 20,
+    fontWeight:'700',
+    marginTop: Spacing.two,
+  },
+  marcador :{
+    fontSize: 20,
+    fontWeight:'700',
   },
 });
