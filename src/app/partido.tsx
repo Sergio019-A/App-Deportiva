@@ -40,7 +40,7 @@ export default function PartidoScreen() {
   const [abierto, setAbierto] = useState(false);
   const[avisoId,setAvisoId]=useState<string | null>(null);
   const avisado = avisoId !== null;
-  const { liga, titulo, dia, hora, estado, donde,inicio,id} = useLocalSearchParams<{
+  const { liga, titulo, dia, hora, estado, donde,inicio,id, podio:podioTexto} = useLocalSearchParams<{
     liga: string;
     titulo: string;
     dia: string;
@@ -49,11 +49,13 @@ export default function PartidoScreen() {
     donde: string;
     inicio:string,
     id:string,
+    podio:string,
   }>();
 
   const color = COLORES[liga] ?? '#6B7280';
   const fondo = FONDOS[liga] ?? '#000000';
   const plataformas = donde ? donde.split('|').slice(0, 3) : [];
+  const podio = podioTexto ? podioTexto.split('|'):[];
   useEffect(() => {
     async function buscar(){
         const lista = await Notifications.getAllScheduledNotificationsAsync();
@@ -130,6 +132,17 @@ export default function PartidoScreen() {
               <ThemedText>🕑 Hora</ThemedText>
               <ThemedText style={styles.valor}>{hora}</ThemedText>
             </ThemedView>
+          </ThemedView>
+          {/*PODIO DE CARRERA YA TRASMITIDA */}
+          <ThemedView type='backgroundElement' style={styles.bloque}>
+            <ThemedText style={styles.valor}>🏁 Podio</ThemedText>
+            {podio.map((nombre,i)=>(
+              <ThemedView key={nombre} type="backgroundElement" style={styles.fila}>  
+              <ThemedText>
+                 {['🥇', '🥈', '🥉'][i]} {nombre}
+              </ThemedText>
+              </ThemedView>
+            ))}
           </ThemedView>
 
           {/* Dónde verlo (se despliega) */}

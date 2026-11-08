@@ -18,6 +18,7 @@ type Partido = {
   inicio: string;
   titulo: string;
   marcador: string,
+  podio : string,
 };
 
 const BASE = 'https://site.api.espn.com/apis/site/v2/sports';
@@ -114,6 +115,7 @@ async function pedirLiga(liga: { nombre: string; url: string }, numDias =7): Pro
           (e.status?.type?.state ?? 'pre') === 'pre'
           ? ''
           :`${visitante.score ?? 0} - ${local.score ?? 0}`,
+          podio :'',
       },
     ];
   });
@@ -129,13 +131,29 @@ function nombreSesion(sigla?: string) {
   };
   return (sigla && nombres[sigla]) ?? sigla ?? 'Sesión';
 }
+function podioF1(c:any){
+  if(c.status?.type?.state !== 'post')return '';
+  return[...(c.competitors ?? [])]
+    .sort((a:any, b:any) => a.order - b.order)
+    .slice(0,3)
+    .map((p:any) => p.athlete?.shortName ?? p.athlete?.displayName ?? '')
+    .join('|');
+}
+function ganadorF1(podio:string){
+  const primero = podio.split('|')[0];
+  return primero ? `🏆 ${primero}` : '';
+}
 
 async function pedirF1(): Promise<Partido[]> {
-  const hoy = new Date();
+  const hoy = new Date(Date.now()-3 * 24 * 60 * 60 *1000);
   const en30dias = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
   const rango = `${fechaYMD(hoy)}-${fechaYMD(en30dias)}`;
   const respuesta = await fetch(`${BASE}/racing/f1/scoreboard?dates=${rango}`);
   const datos = await respuesta.json();
+  const terminada = (datos.events ?? [])
+  .flatMap((e:any) => e.competitions ?? [])
+  .find((c:any) => c.status?.type?.state === 'post');
+  console.log('F1 Terminada', JSON.stringify(terminada?.competitors?.slice(0,3)).slice(0,1500));
 
   return (datos.events ?? []).flatMap((e: any) =>
     (e.competitions ?? []).map((c: any) => ({
@@ -155,7 +173,8 @@ async function pedirF1(): Promise<Partido[]> {
       liga: 'F1',
       estado: c.status?.type?.state ?? 'pre',
       inicio: c.date,
-      marcador : '',
+      podio: podioF1(c),
+      marcador: ganadorF1(podioF1(c)),
     }))
   );
 }
@@ -262,6 +281,7 @@ export default function HomeScreen() {
                     donde: (DONDE_VER[p.liga] ??[]).join('|'),
                     inicio:p.inicio,
                     id:p.id,
+                    podio : p.podio,
                   },
                 })
               }>
