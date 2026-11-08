@@ -153,7 +153,6 @@ async function pedirF1(): Promise<Partido[]> {
   const terminada = (datos.events ?? [])
   .flatMap((e:any) => e.competitions ?? [])
   .find((c:any) => c.status?.type?.state === 'post');
-  console.log('F1 Terminada', JSON.stringify(terminada?.competitors?.slice(0,3)).slice(0,1500));
 
   return (datos.events ?? []).flatMap((e: any) =>
     (e.competitions ?? []).map((c: any) => ({
@@ -227,7 +226,18 @@ export default function HomeScreen() {
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
-        <ThemedText type="title">Quién juega hoy</ThemedText>
+          <ThemedView style={styles.cabecera}>
+            <ThemedView style={styles.fondoColores}>
+              <ThemedView style={[styles.tramo, { backgroundColor: '#E56020' }]} />
+              <ThemedView style={[styles.tramo, { backgroundColor: '#1E5AA8' }]} />
+              <ThemedView style={[styles.tramo, { backgroundColor: '#E10600' }]} />
+              <ThemedView style={[styles.tramo, { backgroundColor: '#2F855A' }]} />
+            </ThemedView>
+            <ThemedText style={styles.logo}>Gridly</ThemedText>
+            <ThemedText type="small" style={styles.lema}>
+              Fútbol, NBA, NFL y F1 en un solo lugar
+            </ThemedText>
+          </ThemedView>
 
         <ThemedView style={styles.botones}>
           {['Todas', ...LIGAS.map((l) => l.nombre), 'F1'].map((nombre) => (
@@ -362,5 +372,36 @@ const styles = StyleSheet.create({
   marcador :{
     fontSize: 20,
     fontWeight:'700',
+  },
+  cabecera: {
+  padding: Spacing.three,
+  borderRadius: Spacing.three,
+  overflow: 'hidden',
+  gap: Spacing.one,
+  },
+  fondoColores: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    flexDirection: 'row',
+  },
+  tramo: {
+    flex: 1,
+  },
+  logo: {
+    fontSize: 44,
+    lineHeight: 48,
+    fontWeight: '800',
+    letterSpacing: -1,
+    color: '#FFFFFF',
+    textShadowColor: 'rgba(0,0,0,0.35)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
+  },
+  lema: {
+    color: '#FFFFFF',
+    opacity: 0.9,
   },
 });
