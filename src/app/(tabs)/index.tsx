@@ -41,6 +41,15 @@ const DONDE_VER: Record<string, string[]> = {
   Champions: ['Disney+ Premium (ESPN)',' Paramount+','ESPN en TV por cable'],
   'Liga Betplay': ['Win Sports',' Win Play','DSports'],
 };
+const DURACION_MAX_HORAS: Record<string,number>={
+  NBA:3.5,
+  NFL:4.5,
+  F1:3,
+  Premier:3,
+  LaLiga:3,
+  Champions:3,
+  'Liga Betplay':3,
+}
 const COLORES: Record<string,string>={
   Todas: '#6B7280',
   NBA: '#E56020',
@@ -56,6 +65,11 @@ function textoEstado(estado: string) {
   if (estado === 'in') return 'En vivo';
   if (estado === 'post') return 'Finalizado';
   return '';
+}
+function estadoReal(estado:string, inicio:string,liga:string){
+  if(estado != 'in')return estado;
+  const horas = (Date.now() - new Date(inicio).getTime()) / (60 * 60 * 1000);
+  return horas > (DURACION_MAX_HORAS[liga] ?? 3)? 'post':'in';
 }
 function etiquetaDia(inicio:string){
   const fecha= new Date(inicio);
@@ -201,7 +215,7 @@ export default function HomeScreen() {
         nuevos.forEach((p) => mapa.set(p.id, p));
         const todos = [...mapa.values()];
         todos.sort((a, b) => new Date(a.inicio).getTime() - new Date(b.inicio).getTime());
-        hayVivos.current = todos.some((p) => p.estado === 'in');
+        hayVivos.current = todos.some((p) => estadoReal(p.estado,p.inicio,p.liga) === 'in');
         return todos;
       });
       setError(false);
@@ -287,11 +301,14 @@ export default function HomeScreen() {
                     titulo: p.titulo,
                     dia: p.dia,
                     hora: p.hora,
-                    estado: textoEstado(p.estado),
+                    estado: textoEstado(estadoReal(p.estado, p.inicio , p.liga)),
                     donde: (DONDE_VER[p.liga] ??[]).join('|'),
                     inicio:p.inicio,
                     id:p.id,
                     podio : p.podio,
+                    marcador : p.marcador,
+                    local : p.local,
+                    visitante : p.visitante
                   },
                 })
               }>

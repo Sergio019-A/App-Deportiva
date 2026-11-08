@@ -40,7 +40,7 @@ export default function PartidoScreen() {
   const [abierto, setAbierto] = useState(false);
   const[avisoId,setAvisoId]=useState<string | null>(null);
   const avisado = avisoId !== null;
-  const { liga, titulo, dia, hora, estado, donde,inicio,id, podio:podioTexto} = useLocalSearchParams<{
+  const { liga, titulo, dia, hora, estado, donde,inicio,id, podio:podioTexto,marcador,local,visitante} = useLocalSearchParams<{
     liga: string;
     titulo: string;
     dia: string;
@@ -50,12 +50,16 @@ export default function PartidoScreen() {
     inicio:string,
     id:string,
     podio:string,
+    marcador : string,
+    local : string,
+    visitante :string,
   }>();
 
   const color = COLORES[liga] ?? '#6B7280';
   const fondo = FONDOS[liga] ?? '#000000';
   const plataformas = donde ? donde.split('|').slice(0, 3) : [];
   const podio = podioTexto ? podioTexto.split('|'):[];
+  const[ptsVisitante , ptsLocal] = marcador ? marcador.split(' - '): ['-','-']
   useEffect(() => {
     async function buscar(){
         const lista = await Notifications.getAllScheduledNotificationsAsync();
@@ -134,16 +138,34 @@ export default function PartidoScreen() {
             </ThemedView>
           </ThemedView>
           {/*PODIO DE CARRERA YA TRASMITIDA */}
-          <ThemedView type='backgroundElement' style={styles.bloque}>
-            <ThemedText style={styles.valor}>🏁 Podio</ThemedText>
-            {podio.map((nombre,i)=>(
-              <ThemedView key={nombre} type="backgroundElement" style={styles.fila}>  
-              <ThemedText>
-                 {['🥇', '🥈', '🥉'][i]} {nombre}
+          {liga === 'F1' && podio.length > 0 && (
+            <ThemedView type = "backgroundElement" style={styles.bloque}>
+              <ThemedText style={styles.valor}>🏁 Podio</ThemedText>
+              {podio.map((nombre, i)=> (
+                <ThemedView key={nombre} type='backgroundElement' style={styles.fila}>
+                  <ThemedText>
+                    {['🥇', '🥈', '🥉'][i]} {nombre}
+                  </ThemedText>
+                </ThemedView>
+              ))}
+            </ThemedView>
+          )}
+          
+          {liga !== 'F1' && (
+            <ThemedView type='backgroundElement' style={styles.bloque}>
+              <ThemedText style={styles.valor}>
+                {marcador ? '🏟️ Resultado':'🏟️ Enfrentamiento'}
               </ThemedText>
+              <ThemedView type="backgroundElement" style={styles.fila}>
+                <ThemedText>{visitante}</ThemedText>
+                <ThemedText style={styles.valor}>{ptsVisitante}</ThemedText>
               </ThemedView>
-            ))}
-          </ThemedView>
+              <ThemedView type="backgroundElement" style={styles.fila}>
+                <ThemedText>{local}</ThemedText>
+                <ThemedText style={styles.valor}>{ptsLocal}</ThemedText>
+              </ThemedView>
+            </ThemedView>
+          )}
 
           {/* Dónde verlo (se despliega) */}
           <ThemedView type="backgroundElement" style={styles.bloque}>
